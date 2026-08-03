@@ -1,19 +1,21 @@
 # RepoRanker API
 
-FastAPI service for RepoRanker's source-code retrieval pipeline. It is deliberately
-independent of the Next.js app so it can deploy to Railway.
+FastAPI service for RepoRanker's code retrieval pipeline. It ingests public GitHub repositories, stores embeddings in Pinecone, retrieves and reranks candidates with Cohere, and generates grounded answers with citations.
 
-## Local development
+## Development
 
-The service loads provider credentials from the repository root `.env` file. Start
-from `../.env.example`; never commit real credentials.
+The API loads secrets from the repository-root `.env` file.
 
 ```bash
 uv sync --all-groups
 uv run fastapi dev app/main.py
 ```
 
-Open `http://localhost:8000/docs` for the OpenAPI interface. `POST /api/index`
-clones a public GitHub repository, filters and chunks source files, embeds them
-with Cohere, and replaces that repository's Pinecone namespace. `POST /api/search`
-is the next pipeline milestone.
+Run checks with:
+
+```bash
+uv run ruff check .
+uv run pytest
+```
+
+Open http://localhost:8000/docs for the interactive API schema. See the root [README](../README.md) for architecture, API details, and deployment setup.
