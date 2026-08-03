@@ -130,21 +130,30 @@ class RepositorySearcher:
         started_at = time.perf_counter()
         try:
             response = self.answerer.answer(query, documents)
-            answer, source_ids = _parse_generated_answer(response, len(results))
-            evidence = [
-                AnswerEvidence(
-                    file=results[source_id - 1].file,
-                    start_line=results[source_id - 1].start_line,
-                    end_line=results[source_id - 1].end_line,
-                    snippet=results[source_id - 1].snippet,
-                    language=results[source_id - 1].language,
-                )
-                for source_id in source_ids
-            ]
-            return answer, evidence, _elapsed_ms(started_at)
         except Exception:
             # Search remains useful if the optional explanation stage is unavailable.
             return None, [], 0
+
+        try:
+            answer, source_ids = _parse_generated_answer(response, len(results))
+        except (json.JSONDecodeError, ValueError):
+            # Preserve a usable explanation if the model ignores the requested JSON shape.
+            answer = response.strip()
+            source_ids = list(range(1, min(3, len(results)) + 1))
+
+        if not answer:
+            return None, [], 0
+        evidence = [
+            AnswerEvidence(
+                file=results[source_id - 1].file,
+                start_line=results[source_id - 1].start_line,
+                end_line=results[source_id - 1].end_line,
+                snippet=results[source_id - 1].snippet,
+                language=results[source_id - 1].language,
+            )
+            for source_id in source_ids
+        ]
+        return answer, evidence, _elapsed_ms(started_at)
 
 
 def _ranked_result(

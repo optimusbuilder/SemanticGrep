@@ -124,3 +124,25 @@ def test_generated_answer_accepts_json_in_a_markdown_fence() -> None:
 
     assert answer == "Uses the screenshot handler."
     assert source_ids == [2]
+
+
+def test_search_preserves_plain_text_answers_when_source_selection_is_invalid() -> None:
+    class PlainTextAnswerer:
+        def answer(self, *_: object) -> str:
+            return "Screenshots are captured through the configured provider."
+
+    searcher = RepositorySearcher(
+        get_settings(),
+        embedder=FakeEmbedder(),  # type: ignore[arg-type]
+        store=FakeStore(),  # type: ignore[arg-type]
+        reranker=FakeReranker(),  # type: ignore[arg-type]
+        answerer=PlainTextAnswerer(),  # type: ignore[arg-type]
+    )
+
+    summary = searcher.search("Where are screenshots captured?", "browserbase/stagehand")
+
+    assert summary.answer == "Screenshots are captured through the configured provider."
+    assert [item.file for item in summary.evidence] == [
+        "src/screenshot.ts",
+        "src/browser.ts",
+    ]
