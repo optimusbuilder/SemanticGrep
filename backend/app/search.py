@@ -57,7 +57,13 @@ class RepositorySearcher:
             settings.cohere_generation_model,
         )
 
-    def search(self, query: str, repository: str, language: str | None = None) -> SearchSummary:
+    def search(
+        self,
+        query: str,
+        repository: str,
+        language: str | None = None,
+        generate_answer: bool = True,
+    ) -> SearchSummary:
         started_at = time.perf_counter()
         query_embedding = self.embedder.embed_query(query)
 
@@ -81,7 +87,7 @@ class RepositorySearcher:
         rankings = self.reranker.rerank(query, [candidate.content for candidate in candidates])
         rerank_latency_ms = _elapsed_ms(rerank_started_at)
         results = [_ranked_result(candidates[index], score) for index, score in rankings]
-        answer, answer_latency_ms = self._answer(query, results)
+        answer, answer_latency_ms = self._answer(query, results) if generate_answer else (None, 0)
         return SearchSummary(
             query=query,
             search_time_ms=_elapsed_ms(started_at),

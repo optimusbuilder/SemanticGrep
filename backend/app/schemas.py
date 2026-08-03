@@ -69,6 +69,26 @@ class SearchResponse(BaseModel):
     vector_results: list[SearchResult]
 
 
+class BenchmarkRequest(BaseModel):
+    repository: str = Field(pattern=r"^[\w.-]+/[\w.-]+$")
+
+
+class BenchmarkCaseResponse(BaseModel):
+    query: str
+    expected_file: str
+    vector_rank: int | None
+    rerank_rank: int | None
+
+
+class BenchmarkResponse(BaseModel):
+    repository: str
+    vector_recall_at_5: float
+    rerank_recall_at_5: float
+    vector_mrr: float
+    rerank_mrr: float
+    cases: list[BenchmarkCaseResponse]
+
+
 class HealthResponse(BaseModel):
     status: Literal["ok"]
     service: str

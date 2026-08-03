@@ -63,6 +63,22 @@ type SearchResponse = {
   vector_results: SearchResult[];
 };
 
+type BenchmarkCase = {
+  query: string;
+  expected_file: string;
+  vector_rank: number | null;
+  rerank_rank: number | null;
+};
+
+type BenchmarkResponse = {
+  repository: string;
+  vector_recall_at_5: number;
+  rerank_recall_at_5: number;
+  vector_mrr: number;
+  rerank_mrr: number;
+  cases: BenchmarkCase[];
+};
+
 async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${apiUrl}${path}`, {
     ...options,
@@ -98,6 +114,9 @@ export default function Home() {
   const [view, setView] = useState<"reranked" | "vector">("reranked");
   const [copied, setCopied] = useState<string | null>(null);
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>("idle");
+  const [benchmark, setBenchmark] = useState<BenchmarkResponse | null>(null);
+  const [isBenchmarking, setIsBenchmarking] = useState(false);
+  const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
 
   const isIndexing = indexJob !== null && !["ready", "failed"].includes(indexJob.status);
   const isIndexed = indexJob?.status === "ready";
@@ -107,6 +126,21 @@ export default function Home() {
     .replace(/\/$/, "");
   const canSearch = !isIndexing && /^[\w.-]+\/[\w.-]+$/.test(repositoryScope);
   const displayedResults = view === "reranked" ? searchData?.results ?? [] : searchData?.vector_results ?? [];
+  const runBenchmark = async () => {
+    if (repositoryScope !== "browserbase/stagehand" || !canSearch) return;
+    setIsBenchmarking(true);
+    setBenchmarkError(null);
+    try {
+      setBenchmark(await apiRequest<BenchmarkResponse>("/api/benchmark", {
+        method: "POST",
+        body: JSON.stringify({ repository: repositoryScope }),
+      }));
+    } catch (error) {
+      setBenchmarkError(error instanceof Error ? error.message : "Unable to run the benchmark.");
+    } finally {
+      setIsBenchmarking(false);
+    }
+  };
   const answerPanel = searchData?.answer ? (
     <section className="answer-panel relative bg-[#e8e9e1] px-5 py-10 sm:px-8 lg:px-12">
       <div className="mx-auto max-w-[1440px]">
@@ -135,6 +169,11 @@ export default function Home() {
       </div>
     </section>
   );
+  const benchmarkPanel = repositoryScope === "browserbase/stagehand" ? (
+    <section className="benchmark-panel relative bg-[#f5f4ed] px-5 py-10 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-[1440px] border border-[#c8c9bf] bg-[#f9f8f3] p-5 sm:p-7"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[#66730d]">Evaluation set</p><h2 className="mt-2 text-2xl font-medium tracking-[-0.05em]">Measure the rerank lift</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#66695f]">Five curated Stagehand implementation queries. Vector-only and Rerank both begin with the same Pinecone top-20 candidates.</p></div><button type="button" onClick={() => void runBenchmark()} disabled={!canSearch || isBenchmarking} className="inline-flex items-center justify-center gap-2 bg-[#1d211b] px-4 py-3 text-sm font-medium text-[#f5f4ed] transition hover:bg-[#718617] disabled:cursor-not-allowed">{isBenchmarking ? "Running benchmark..." : "Run benchmark"}<Mark type="arrow" /></button></div>{benchmarkError && <p className="mt-4 text-xs text-[#9d3628]">{benchmarkError}</p>}{benchmark && <><div className="mt-7 grid gap-3 sm:grid-cols-2"><div className="border-l-2 border-[#b9bbb0] bg-[#eeeeE7] p-4"><p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#6d7067]">Vector-only</p><p className="mt-2 text-2xl font-medium tracking-[-0.05em]">{benchmark.vector_recall_at_5}% <span className="text-sm text-[#6d7067]">Recall@5</span></p><p className="mt-1 font-mono text-xs text-[#676a60]">MRR {benchmark.vector_mrr.toFixed(3)}</p></div><div className="border-l-2 border-[#8eaa1c] bg-[#edf3cf] p-4"><p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#647b11]">After Cohere Rerank</p><p className="mt-2 text-2xl font-medium tracking-[-0.05em]">{benchmark.rerank_recall_at_5}% <span className="text-sm text-[#647b11]">Recall@5</span></p><p className="mt-1 font-mono text-xs text-[#647b11]">MRR {benchmark.rerank_mrr.toFixed(3)}</p></div></div><div className="mt-5 divide-y divide-[#dedfd5] border-y border-[#dedfd5]">{benchmark.cases.map((item) => <div key={item.query} className="grid gap-2 py-3 text-xs sm:grid-cols-[1fr_auto_auto]"><span className="font-medium">{item.query}</span><span className="font-mono text-[#6c6f65]">Vector #{item.vector_rank ?? "-"}</span><span className="font-mono text-[#647b11]">Rerank #{item.rerank_rank ?? "-"}</span></div>)}</div></>}</div>
+    </section>
+  ) : null;
   const retrievalLab = searchData ? (
     <section className="retrieval-lab relative bg-[#e8e9e1] px-5 py-10 sm:px-8 lg:px-12">
       <div className="mx-auto max-w-[1440px] border border-[#c7c8be] bg-[#f5f4ed] p-5 sm:p-7"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[#66730d]">Retrieval lab</p><h2 className="mt-2 text-2xl font-medium tracking-[-0.05em]">What reranking changed</h2></div><p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#6d7067]">Pinecone top 20 → Cohere top 5</p></div><div className="mt-6 grid gap-2">{searchData.results.map((result, rerankIndex) => { const vectorIndex = searchData.vector_results.findIndex((candidate) => candidate.file === result.file && candidate.start_line === result.start_line); const movement = vectorIndex - rerankIndex; return <button type="button" key={`${result.file}-${result.start_line}`} onClick={() => highlightCitation(result.file, result.start_line)} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-l-2 border-[#b5ca39] bg-[#ebede2] px-3 py-3 text-left transition hover:bg-[#e2e7cb]"><span className="font-mono text-[10px] text-[#72766b]">#{String(vectorIndex + 1).padStart(2, "0")} → #{String(rerankIndex + 1).padStart(2, "0")}</span><span className="min-w-0 truncate text-xs font-medium">{result.file}</span><span className={`font-mono text-xs ${movement > 0 ? "text-[#517307]" : "text-[#71746b]"}`}>{movement > 0 ? `↑ ${movement}` : movement < 0 ? `↓ ${Math.abs(movement)}` : "="}</span></button>})}</div></div>
@@ -249,6 +288,7 @@ export default function Home() {
       <footer className="relative mx-auto flex max-w-[1440px] flex-col gap-3 px-5 py-8 text-xs text-[#6d7067] sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-12"><span>RepoRanker <span className="mx-2 text-[#a1a399]">/</span> A source-code retrieval system</span><span className="font-mono text-[10px] uppercase tracking-[0.12em]">Cohere Embed + Rerank</span></footer>
       {pipelinePanel}
       {demoPanel}
+      {benchmarkPanel}
       {retrievalLab}
     </main>
   );

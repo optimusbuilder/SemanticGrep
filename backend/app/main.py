@@ -1,10 +1,14 @@
 from fastapi import BackgroundTasks, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.benchmark import run_stagehand_benchmark
 from app.config import get_settings
 from app.jobs import IndexJob, IndexJobManager
 from app.schemas import (
     AnswerCitation,
+    BenchmarkCaseResponse,
+    BenchmarkRequest,
+    BenchmarkResponse,
     HealthResponse,
     IndexJobResponse,
     IndexRequest,
@@ -83,6 +87,30 @@ def search_repository(request: SearchRequest) -> SearchResponse:
         citations=[AnswerCitation(**citation.__dict__) for citation in summary.citations],
         results=[SearchResult(**result.__dict__) for result in summary.results],
         vector_results=[SearchResult(**result.__dict__) for result in summary.vector_results],
+    )
+
+
+@app.post("/api/benchmark", response_model=BenchmarkResponse)
+def benchmark_retrieval(request: BenchmarkRequest) -> BenchmarkResponse:
+    try:
+        summary = run_stagehand_benchmark(RepositorySearcher(settings), request.repository)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(error),
+        ) from error
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Benchmark execution failed.",
+        ) from error
+    return BenchmarkResponse(
+        repository=summary.repository,
+        vector_recall_at_5=summary.vector_recall_at_5,
+        rerank_recall_at_5=summary.rerank_recall_at_5,
+        vector_mrr=summary.vector_mrr,
+        rerank_mrr=summary.rerank_mrr,
+        cases=[BenchmarkCaseResponse(**case.__dict__) for case in summary.cases],
     )
 
 

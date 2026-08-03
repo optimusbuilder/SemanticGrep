@@ -26,10 +26,11 @@ main > section[aria-labelledby="repository-heading"] { order: 1; }
 main > section[aria-labelledby="search-heading"] { order: 2; }
 main > .pipeline-panel { order: 3; }
 main > .demo-mode { order: 4; }
-main > .answer-panel { order: 5; }
-main > .retrieval-lab { order: 6; }
-main > section[aria-label="Search results"] { order: 7; }
-main > footer { order: 8; }
+main > .benchmark-panel { order: 5; }
+main > .answer-panel { order: 6; }
+main > .retrieval-lab { order: 7; }
+main > section[aria-label="Search results"] { order: 8; }
+main > footer { order: 9; }
 
 .page-grid {
   background-image: linear-gradient(to right, rgba(34, 38, 30, 0.045) 1px, transparent 1px), linear-gradient(to bottom, rgba(34, 38, 30, 0.045) 1px, transparent 1px);
