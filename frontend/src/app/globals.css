@@ -24,9 +24,11 @@ main { display: flex; flex-direction: column; }
 
 main > section[aria-labelledby="repository-heading"] { order: 1; }
 main > section[aria-labelledby="search-heading"] { order: 2; }
-main > .answer-panel { order: 3; }
-main > section[aria-label="Search results"] { order: 4; }
-main > footer { order: 5; }
+main > .demo-mode { order: 3; }
+main > .answer-panel { order: 4; }
+main > .retrieval-lab { order: 5; }
+main > section[aria-label="Search results"] { order: 6; }
+main > footer { order: 7; }
 
 .page-grid {
   background-image: linear-gradient(to right, rgba(34, 38, 30, 0.045) 1px, transparent 1px), linear-gradient(to bottom, rgba(34, 38, 30, 0.045) 1px, transparent 1px);
