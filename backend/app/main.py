@@ -9,6 +9,7 @@ from app.schemas import (
     IndexRequest,
     SearchRequest,
     SearchResponse,
+    SearchResult,
 )
 from app.search import RepositorySearcher
 
@@ -76,8 +77,8 @@ def search_repository(request: SearchRequest) -> SearchResponse:
         search_time_ms=summary.search_time_ms,
         pinecone_latency_ms=summary.pinecone_latency_ms,
         rerank_latency_ms=summary.rerank_latency_ms,
-        results=summary.results,
-        vector_results=summary.vector_results,
+        results=[SearchResult(**result.__dict__) for result in summary.results],
+        vector_results=[SearchResult(**result.__dict__) for result in summary.vector_results],
     )
 
 

@@ -1,6 +1,8 @@
 from fastapi.testclient import TestClient
 
+import app.main as main
 from app.main import app, jobs
+from app.search import RankedSearchResult, SearchSummary
 
 
 def test_health_returns_service_status() -> None:
@@ -14,6 +16,45 @@ def test_search_requires_repository_scope() -> None:
     response = TestClient(app).post("/api/search", json={"query": "Find screenshots"})
 
     assert response.status_code == 422
+
+
+def test_search_response_serializes_ranked_results(monkeypatch) -> None:
+    result = RankedSearchResult(
+        file="src/screenshot.ts",
+        start_line=40,
+        end_line=62,
+        snippet="return page.screenshot();",
+        embedding_score=0.77,
+        rerank_score=0.98,
+        language="typescript",
+    )
+
+    class FakeSearcher:
+        def __init__(self, *_: object) -> None:
+            pass
+
+        def search(self, *_: object) -> SearchSummary:
+            return SearchSummary(
+                query="Where are screenshots captured?",
+                search_time_ms=100,
+                pinecone_latency_ms=30,
+                rerank_latency_ms=50,
+                results=[result],
+                vector_results=[result],
+            )
+
+    monkeypatch.setattr(main, "RepositorySearcher", FakeSearcher)
+
+    response = TestClient(app).post(
+        "/api/search",
+        json={
+            "query": "Where are screenshots captured?",
+            "repository": "browserbase/stagehand",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["results"][0]["rerank_score"] == 0.98
 
 
 def test_index_job_can_be_created_and_polled(monkeypatch) -> None:
