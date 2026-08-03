@@ -10,20 +10,36 @@ def test_repository_name_strips_git_suffix() -> None:
     assert repository_name(url) == "browserbase/stagehand"
 
 
-def test_collect_source_files_only_includes_supported_files(tmp_path: Path) -> None:
+def test_collect_source_files_only_includes_production_code(tmp_path: Path) -> None:
     (tmp_path / "src").mkdir()
     (tmp_path / "node_modules").mkdir()
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "docs").mkdir()
     (tmp_path / "src" / "app.ts").write_text("export const app = true;", encoding="utf-8")
-    (tmp_path / "README.md").write_text("# Example", encoding="utf-8")
+    (tmp_path / "main.py").write_text("print('production')", encoding="utf-8")
     (tmp_path / "node_modules" / "ignored.js").write_text("ignored", encoding="utf-8")
+    (tmp_path / "tests" / "app.test.ts").write_text("ignored", encoding="utf-8")
+    (tmp_path / "docs" / "guide.md").write_text("# ignored", encoding="utf-8")
+    (tmp_path / "src" / "generated.ts").write_text("// @generated\nexport {}", encoding="utf-8")
+    (tmp_path / "src" / "types.d.ts").write_text("declare type Ignored = string", encoding="utf-8")
     (tmp_path / "asset.png").write_bytes(b"png")
 
     source_files = collect_source_files(tmp_path)
 
     assert [(source.path, source.language) for source in source_files] == [
-        ("README.md", "markdown"),
+        ("main.py", "python"),
         ("src/app.ts", "typescript"),
     ]
+
+
+def test_collect_source_files_skips_minified_javascript(tmp_path: Path) -> None:
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "bundle.js").write_text("x" * 10_001, encoding="utf-8")
+    (tmp_path / "src" / "app.js").write_text("export const app = true;", encoding="utf-8")
+
+    source_files = collect_source_files(tmp_path)
+
+    assert [source.path for source in source_files] == ["src/app.js"]
 
 
 def test_chunking_uses_line_overlap() -> None:

@@ -15,20 +15,38 @@ SUPPORTED_EXTENSIONS = {
     ".go": "go",
     ".rs": "rust",
     ".java": "java",
-    ".md": "markdown",
 }
 IGNORED_DIRECTORIES = {
     ".git",
-    "node_modules",
-    "dist",
+    ".github",
+    ".next",
+    "__pycache__",
+    "__snapshots__",
     "build",
     "coverage",
-    "vendor",
+    "demo",
+    "demos",
+    "dist",
+    "doc",
+    "docs",
+    "e2e",
+    "example",
+    "examples",
+    "fixture",
+    "fixtures",
+    "integration",
+    "mocks",
+    "node_modules",
+    "scripts",
+    "snapshot",
+    "snapshots",
     "target",
-    "__pycache__",
-    ".next",
+    "test",
+    "tests",
+    "vendor",
 }
-MAX_FILE_SIZE_BYTES = 1_000_000
+MAX_FILE_SIZE_BYTES = 250_000
+GENERATED_MARKERS = ("@generated", "auto-generated", "code generated", "do not edit")
 
 
 def repository_name(github_url: str) -> str:
@@ -40,18 +58,43 @@ def repository_name(github_url: str) -> str:
 
 def collect_source_files(repository_root: Path) -> list[SourceFile]:
     source_files: list[SourceFile] = []
-    for path in repository_root.rglob("*"):
+    for path in sorted(repository_root.rglob("*")):
         if not path.is_file() or path.is_symlink():
             continue
         relative_path = path.relative_to(repository_root)
         if any(part in IGNORED_DIRECTORIES for part in relative_path.parts):
             continue
         language = SUPPORTED_EXTENSIONS.get(path.suffix.lower())
-        if language is None or path.stat().st_size > MAX_FILE_SIZE_BYTES:
+        if (
+            language is None
+            or _is_non_production_file(path)
+            or path.stat().st_size > MAX_FILE_SIZE_BYTES
+        ):
             continue
         content = path.read_text(encoding="utf-8", errors="ignore")
-        if content.strip():
+        if content.strip() and not _is_generated_or_minified(content):
             source_files.append(
                 SourceFile(path=relative_path.as_posix(), content=content, language=language)
             )
     return source_files
+
+
+def _is_non_production_file(path: Path) -> bool:
+    name = path.name.lower()
+    stem = path.stem.lower()
+    return (
+        name.endswith(".d.ts")
+        or ".min." in name
+        or ".spec." in name
+        or ".test." in name
+        or stem.startswith("test_")
+        or stem.endswith("_test")
+    )
+
+
+def _is_generated_or_minified(content: str) -> bool:
+    opening = "\n".join(content.splitlines()[:5]).lower()
+    if any(marker in opening for marker in GENERATED_MARKERS):
+        return True
+    lines = content.splitlines()
+    return len(lines) <= 2 and len(content) > 10_000
