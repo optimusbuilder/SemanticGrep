@@ -10,8 +10,11 @@ class Settings(BaseSettings):
     """Runtime configuration for the independently deployed API service."""
 
     cohere_api_key: str
+    cohere_tokens_per_minute: int = 90_000
     pinecone_api_key: str
     pinecone_index_name: str
+    pinecone_cloud: str = "aws"
+    pinecone_region: str = "us-east-1"
     frontend_origin: str = "http://localhost:3000"
 
     model_config = SettingsConfigDict(

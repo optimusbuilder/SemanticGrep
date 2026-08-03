@@ -13,6 +13,7 @@ uv sync --all-groups
 uv run fastapi dev app/main.py
 ```
 
-Open `http://localhost:8000/docs` for the OpenAPI interface. The current scaffold
-provides `GET /health` and typed placeholder contracts for `POST /api/index` and
-`POST /api/search`.
+Open `http://localhost:8000/docs` for the OpenAPI interface. `POST /api/index`
+clones a public GitHub repository, filters and chunks source files, embeds them
+with Cohere, and replaces that repository's Pinecone namespace. `POST /api/search`
+is the next pipeline milestone.

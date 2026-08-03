@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.ingestion import RepositoryIndexer
 from app.schemas import (
     HealthResponse,
     IndexRequest,
@@ -32,13 +33,21 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok", service="reporanker-api")
 
 
-@app.post("/api/index", response_model=IndexResponse, status_code=501)
+@app.post("/api/index", response_model=IndexResponse)
 def index_repository(request: IndexRequest) -> IndexResponse:
-    """Reserve the ingestion API contract before pipeline wiring is added."""
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail=f"Indexing is not implemented for {request.github_url}.",
-    )
+    try:
+        summary = RepositoryIndexer(settings).index(str(request.github_url))
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(error),
+        ) from error
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Repository indexing failed.",
+        ) from error
+    return IndexResponse(status="ready", **summary.__dict__)
 
 
 @app.post("/api/search", response_model=SearchResponse, status_code=501)

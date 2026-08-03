@@ -1,12 +1,20 @@
 from typing import Literal
 
-from pydantic import AnyHttpUrl, BaseModel, Field
+from pydantic import AnyHttpUrl, BaseModel, Field, field_validator
 
 
 class IndexRequest(BaseModel):
     github_url: AnyHttpUrl = Field(
         description="Public GitHub repository URL to clone and index."
     )
+
+    @field_validator("github_url")
+    @classmethod
+    def require_public_github_repository(cls, value: AnyHttpUrl) -> AnyHttpUrl:
+        path_parts = [part for part in value.path.split("/") if part]
+        if value.host != "github.com" or len(path_parts) != 2:
+            raise ValueError("github_url must be a public https://github.com/owner/repository URL")
+        return value
 
 
 class IndexResponse(BaseModel):
