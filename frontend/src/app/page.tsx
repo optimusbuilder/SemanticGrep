@@ -51,6 +51,14 @@ type AnswerCitation = {
   end_line: number;
 };
 
+type AnswerEvidence = {
+  file: string;
+  start_line: number;
+  end_line: number;
+  snippet: string;
+  language: string;
+};
+
 type SearchResponse = {
   query: string;
   search_time_ms: number;
@@ -59,6 +67,7 @@ type SearchResponse = {
   answer_latency_ms: number;
   answer: string | null;
   citations: AnswerCitation[];
+  evidence: AnswerEvidence[];
   results: SearchResult[];
   vector_results: SearchResult[];
 };
@@ -166,7 +175,7 @@ export default function Home() {
             <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[#66730d]">04 / Grounded answer</p>
             <span className="font-mono text-[10px] text-[#6d7067]">Command A / {searchData.answer_latency_ms} ms</span>
           </div>
-          <ReactMarkdown components={{ p: ({ children }) => <p className="mt-4 max-w-4xl text-[15px] leading-7 text-[#30342d] first:mt-5">{children}</p>, strong: ({ children }) => <strong className="font-semibold text-[#1d211b]">{children}</strong>, ol: ({ children }) => <ol className="mt-4 list-decimal space-y-2 pl-5 text-[15px] leading-7 text-[#30342d]">{children}</ol>, ul: ({ children }) => <ul className="mt-4 list-disc space-y-2 pl-5 text-[15px] leading-7 text-[#30342d]">{children}</ul>, code: ({ children }) => <code className="rounded bg-[#e9ebe0] px-1 py-0.5 font-mono text-[0.85em] text-[#485b0c]">{children}</code> }}>{searchData.answer}</ReactMarkdown>
+          <ReactMarkdown components={{ p: ({ children }) => <p className="mt-4 max-w-4xl text-[15px] leading-7 text-[#30342d] first:mt-5">{children}</p>, strong: ({ children }) => <strong className="font-semibold text-[#1d211b]">{children}</strong>, ol: ({ children }) => <ol className="mt-4 list-decimal space-y-2 pl-5 text-[15px] leading-7 text-[#30342d]">{children}</ol>, ul: ({ children }) => <ul className="mt-4 list-disc space-y-2 pl-5 text-[15px] leading-7 text-[#30342d]">{children}</ul>, pre: ({ children }) => <pre className="mt-4 overflow-x-auto border border-[#c9cabf] bg-[#20241d] p-4 text-xs leading-6 text-[#e8eddc]">{children}</pre>, code: ({ children }) => <code className="rounded bg-[#e9ebe0] px-1 py-0.5 font-mono text-[0.85em] text-[#485b0c]">{children}</code> }}>{searchData.answer}</ReactMarkdown>
               <div className="mt-6 flex flex-wrap gap-2">
                 {searchData.citations.map((citation) => (
                   <button type="button" key={`${citation.file}-${citation.start_line}`} onClick={() => highlightCitation(citation.file, citation.start_line)} className="border border-[#c9cabf] px-2.5 py-1.5 font-mono text-[10px] text-[#55594f] transition hover:border-[#91a91d] hover:bg-[#edf4cb]">
@@ -174,6 +183,22 @@ export default function Home() {
                   </button>
                 ))}
               </div>
+          <div className="mt-7 border-t border-[#d4d5cb] pt-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#66730d]">Source-backed evidence</p>
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+              {searchData.evidence.map((evidence) => {
+                const evidenceKey = `${evidence.file}:${evidence.start_line}`;
+                const sourceUrl = `https://github.com/${repositoryScope}/blob/HEAD/${evidence.file}#L${evidence.start_line}-L${evidence.end_line}`;
+                return <article key={evidenceKey} className="overflow-hidden border border-[#c9cabf] bg-[#f4f4ed]">
+                  <div className="flex items-center justify-between gap-3 border-b border-[#d4d5cb] px-3 py-2">
+                    <a href={sourceUrl} target="_blank" rel="noreferrer" className="min-w-0 truncate font-mono text-[10px] text-[#51670c] underline decoration-[#a8bd43] underline-offset-2">{evidence.file}:{evidence.start_line}-{evidence.end_line}</a>
+                    <button type="button" onClick={() => void copyEvidence(evidence)} className="shrink-0 font-mono text-[10px] text-[#55594f] hover:text-[#51670c]">{copied === evidenceKey ? "Copied" : "Copy"}</button>
+                  </div>
+                  <pre className="max-h-72 overflow-auto bg-[#20241d] p-4 font-mono text-xs leading-6 text-[#e8eddc]"><code>{evidence.snippet}</code></pre>
+                </article>;
+              })}
+            </div>
+          </div>
         </article>
       </div>
     </section>
@@ -301,6 +326,13 @@ export default function Home() {
   async function copySnippet(result: SearchResult) {
     await navigator.clipboard.writeText(result.snippet);
     setCopied(result.file);
+    window.setTimeout(() => setCopied(null), 1_500);
+  }
+
+  async function copyEvidence(evidence: AnswerEvidence) {
+    const evidenceKey = `${evidence.file}:${evidence.start_line}`;
+    await navigator.clipboard.writeText(evidence.snippet);
+    setCopied(evidenceKey);
     window.setTimeout(() => setCopied(null), 1_500);
   }
 

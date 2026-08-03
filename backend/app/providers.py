@@ -242,7 +242,11 @@ class CohereAnswerer:
                         "Answer the developer's question using only the supplied source-code "
                         "context. Be concise and explain the execution flow. If the context is "
                         "insufficient, say so. "
-                        "Do not invent files, functions, or behavior."
+                        "Do not invent files, functions, or behavior. Return valid JSON only, "
+                        'with this shape: {"answer": "Markdown explanation", '
+                        '"source_ids": [1, 2]}. '
+                        "source_ids must contain one to three distinct Source IDs that directly "
+                        "support the answer."
                     ),
                 },
                 {

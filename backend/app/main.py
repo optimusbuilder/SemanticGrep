@@ -7,6 +7,7 @@ from app.jobs import IndexJob, IndexJobManager
 from app.providers import PineconeStore
 from app.schemas import (
     AnswerCitation,
+    AnswerEvidence,
     BenchmarkCaseResponse,
     BenchmarkRequest,
     BenchmarkResponse,
@@ -98,6 +99,7 @@ def search_repository(request: SearchRequest) -> SearchResponse:
         answer_latency_ms=summary.answer_latency_ms,
         answer=summary.answer,
         citations=[AnswerCitation(**citation.__dict__) for citation in summary.citations],
+        evidence=[AnswerEvidence(**item.__dict__) for item in summary.evidence],
         results=[SearchResult(**result.__dict__) for result in summary.results],
         vector_results=[SearchResult(**result.__dict__) for result in summary.vector_results],
     )

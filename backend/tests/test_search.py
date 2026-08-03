@@ -1,6 +1,6 @@
 from app.config import get_settings
 from app.models import RetrievedChunk
-from app.search import RepositorySearcher
+from app.search import RepositorySearcher, _parse_generated_answer
 
 
 class FakeEmbedder:
@@ -47,8 +47,13 @@ class FakeReranker:
 class FakeAnswerer:
     def answer(self, query: str, documents: list[str]) -> str:
         assert query == "Where are screenshots captured?"
+        assert "Source ID: 1" in documents[0]
         assert "src/screenshot.ts" in documents[0]
-        return "Screenshots are captured by `page.screenshot()` in the screenshot handler."
+        return (
+            '{"answer":"Screenshots are captured by `page.screenshot()` '
+            'in the screenshot handler.",'
+            '"source_ids":[1]}'
+        )
 
 
 def test_search_reranks_pinecone_candidates_and_preserves_both_scores() -> None:
@@ -82,7 +87,9 @@ def test_search_reranks_pinecone_candidates_and_preserves_both_scores() -> None:
     )
     assert [(citation.file, citation.start_line) for citation in summary.citations] == [
         ("src/screenshot.ts", 40),
-        ("src/browser.ts", 10),
+    ]
+    assert [(item.file, item.snippet) for item in summary.evidence] == [
+        ("src/screenshot.ts", "export async function screenshot() { return page.screenshot(); }")
     ]
 
 
@@ -108,3 +115,12 @@ def test_search_skips_rerank_when_vector_search_returns_no_candidates() -> None:
     assert summary.results == []
     assert summary.vector_results == []
     assert summary.rerank_latency_ms == 0
+
+
+def test_generated_answer_accepts_json_in_a_markdown_fence() -> None:
+    answer, source_ids = _parse_generated_answer(
+        '```json\n{"answer":"Uses the screenshot handler.","source_ids":[2]}\n```', 2
+    )
+
+    assert answer == "Uses the screenshot handler."
+    assert source_ids == [2]

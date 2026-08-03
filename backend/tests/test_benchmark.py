@@ -7,7 +7,7 @@ class FakeSearcher:
         expected = next(case.expected_file for case in STAGEHAND_CASES if case.query == query)
         result = RankedSearchResult(expected, 1, 10, "code", 0.8, 0.9, "typescript")
         vector_results = [result] if "recording" in query else []
-        return SearchSummary(query, 10, 3, 4, 0, None, [], [result], vector_results)
+        return SearchSummary(query, 10, 3, 4, 0, None, [], [], [result], vector_results)
 
 
 def test_benchmark_compares_vector_and_rerank_top_five() -> None:

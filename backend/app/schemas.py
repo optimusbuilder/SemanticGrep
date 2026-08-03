@@ -57,6 +57,14 @@ class AnswerCitation(BaseModel):
     end_line: int
 
 
+class AnswerEvidence(BaseModel):
+    file: str
+    start_line: int
+    end_line: int
+    snippet: str
+    language: str
+
+
 class SearchResponse(BaseModel):
     query: str
     search_time_ms: int
@@ -65,6 +73,7 @@ class SearchResponse(BaseModel):
     answer_latency_ms: int
     answer: str | None
     citations: list[AnswerCitation]
+    evidence: list[AnswerEvidence]
     results: list[SearchResult]
     vector_results: list[SearchResult]
 
