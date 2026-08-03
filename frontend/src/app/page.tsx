@@ -91,7 +91,7 @@ export default function Home() {
   const canSearch = !isIndexing && /^[\w.-]+\/[\w.-]+$/.test(repositoryScope);
   const displayedResults = view === "reranked" ? searchData?.results ?? [] : searchData?.vector_results ?? [];
   const answerPanel = searchData?.answer ? (
-    <section className="relative bg-[#e8e9e1] px-5 py-10 sm:px-8 lg:px-12">
+    <section className="answer-panel relative bg-[#e8e9e1] px-5 py-10 sm:px-8 lg:px-12">
       <div className="mx-auto max-w-[1440px]">
         <article className="border border-[#1d211b] bg-[#f8f7f2] p-5 shadow-[5px_5px_0_#d5ff45] sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-3">
