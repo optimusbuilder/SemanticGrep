@@ -1,0 +1,30 @@
+[project]
+name = "reporanker-api"
+version = "0.1.0"
+description = "API for RepoRanker's source-code retrieval pipeline."
+requires-python = ">=3.12"
+dependencies = [
+    "cohere>=5.20.0",
+    "fastapi[standard]>=0.115.0",
+    "gitpython>=3.1.44",
+    "pinecone>=7.0.0",
+    "pydantic-settings>=2.7.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.0",
+    "pytest>=8.3.0",
+    "ruff>=0.9.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
