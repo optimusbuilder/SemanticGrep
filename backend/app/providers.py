@@ -8,9 +8,10 @@ from pinecone import Pinecone, ServerlessSpec
 from pinecone.errors.exceptions import NotFoundError
 
 from app.config import Settings
-from app.models import CodeChunk
+from app.models import CodeChunk, RetrievedChunk
 
 EMBED_MODEL = "embed-english-v3.0"
+RERANK_MODEL = "rerank-english-v3.0"
 EMBED_BATCH_SIZE = 96
 EMBED_BATCH_TOKEN_LIMIT = 20_000
 EMBED_DIMENSION = 1_024
@@ -30,6 +31,18 @@ class CohereEmbedder:
 
     def count_tokens(self, text: str) -> int:
         return len(self.client.tokenize(text=text, model=EMBED_MODEL, offline=True).tokens)
+
+    def embed_query(self, query: str) -> list[float]:
+        response = self.client.embed(
+            model=EMBED_MODEL,
+            input_type="search_query",
+            texts=[query],
+            embedding_types=["float"],
+            truncate="NONE",
+        )
+        if not response.embeddings.float:
+            raise RuntimeError("Cohere did not return a query embedding.")
+        return response.embeddings.float[0]
 
     def embed_documents(
         self,
@@ -160,3 +173,45 @@ class PineconeStore:
             completed += len(batch)
             if progress_callback is not None:
                 progress_callback(completed, len(vectors))
+
+    def query_repository(
+        self,
+        query_embedding: list[float],
+        repository: str,
+        language: str | None = None,
+    ) -> list[RetrievedChunk]:
+        if self.index_name not in self.client.list_indexes().names():
+            raise ValueError("The Pinecone index does not exist. Index a repository first.")
+        metadata_filter = {"language": {"$eq": language}} if language else None
+        response = self._index().query(
+            vector=query_embedding,
+            top_k=20,
+            include_metadata=True,
+            namespace=repository.replace("/", "--"),
+            filter=metadata_filter,
+        )
+        return [
+            RetrievedChunk(
+                file_path=match.metadata["file_path"],
+                start_line=int(match.metadata["start_line"]),
+                end_line=int(match.metadata["end_line"]),
+                language=match.metadata["language"],
+                content=match.metadata["content"],
+                embedding_score=float(match.score),
+            )
+            for match in response.matches
+        ]
+
+
+class CohereReranker:
+    def __init__(self, api_key: str) -> None:
+        self.client = cohere.ClientV2(api_key=api_key)
+
+    def rerank(self, query: str, documents: Sequence[str]) -> list[tuple[int, float]]:
+        response = self.client.rerank(
+            model=RERANK_MODEL,
+            query=query,
+            documents=documents,
+            top_n=min(5, len(documents)),
+        )
+        return [(result.index, float(result.relevance_score)) for result in response.results]

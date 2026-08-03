@@ -10,6 +10,7 @@ from app.schemas import (
     SearchRequest,
     SearchResponse,
 )
+from app.search import RepositorySearcher
 
 settings = get_settings()
 jobs = IndexJobManager(settings)
@@ -52,12 +53,30 @@ def index_status(job_id: str) -> IndexJobResponse:
     return _job_response(job)
 
 
-@app.post("/api/search", response_model=SearchResponse, status_code=501)
+@app.post("/api/search", response_model=SearchResponse)
 def search_repository(request: SearchRequest) -> SearchResponse:
-    """Reserve the retrieval API contract before provider wiring is added."""
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail=f"Search is not implemented for query {request.query!r}.",
+    try:
+        summary = RepositorySearcher(settings).search(
+            request.query,
+            request.repository,
+            request.language,
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(error),
+        ) from error
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Repository search failed.",
+        ) from error
+    return SearchResponse(
+        query=summary.query,
+        search_time_ms=summary.search_time_ms,
+        pinecone_latency_ms=summary.pinecone_latency_ms,
+        rerank_latency_ms=summary.rerank_latency_ms,
+        results=summary.results,
     )
 
 

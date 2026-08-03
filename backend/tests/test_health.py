@@ -10,10 +10,10 @@ def test_health_returns_service_status() -> None:
     assert response.json() == {"status": "ok", "service": "reporanker-api"}
 
 
-def test_search_contract_is_reserved() -> None:
+def test_search_requires_repository_scope() -> None:
     response = TestClient(app).post("/api/search", json={"query": "Find screenshots"})
 
-    assert response.status_code == 501
+    assert response.status_code == 422
 
 
 def test_index_job_can_be_created_and_polled(monkeypatch) -> None:

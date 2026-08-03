@@ -17,3 +17,13 @@ class CodeChunk:
     end_line: int
     language: str
     content: str
+
+
+@dataclass(frozen=True)
+class RetrievedChunk:
+    file_path: str
+    start_line: int
+    end_line: int
+    language: str
+    content: str
+    embedding_score: float

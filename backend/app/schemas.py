@@ -37,6 +37,7 @@ class IndexJobResponse(BaseModel):
 
 class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=2_000)
+    repository: str = Field(pattern=r"^[\w.-]+/[\w.-]+$")
     language: str | None = Field(default=None, max_length=64)
 
 
@@ -53,6 +54,8 @@ class SearchResult(BaseModel):
 class SearchResponse(BaseModel):
     query: str
     search_time_ms: int
+    pinecone_latency_ms: int
+    rerank_latency_ms: int
     results: list[SearchResult]
 
 
