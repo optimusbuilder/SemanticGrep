@@ -13,7 +13,7 @@ class RankedSearchResult:
     end_line: int
     snippet: str
     embedding_score: float
-    rerank_score: float
+    rerank_score: float | None
     language: str
 
 
@@ -24,6 +24,7 @@ class SearchSummary:
     pinecone_latency_ms: int
     rerank_latency_ms: int
     results: list[RankedSearchResult]
+    vector_results: list[RankedSearchResult]
 
 
 class RepositorySearcher:
@@ -55,6 +56,7 @@ class RepositorySearcher:
                 pinecone_latency_ms=pinecone_latency_ms,
                 rerank_latency_ms=0,
                 results=[],
+                vector_results=[],
             )
 
         rerank_started_at = time.perf_counter()
@@ -67,10 +69,13 @@ class RepositorySearcher:
             pinecone_latency_ms=pinecone_latency_ms,
             rerank_latency_ms=rerank_latency_ms,
             results=results,
+            vector_results=[_ranked_result(candidate) for candidate in candidates],
         )
 
 
-def _ranked_result(candidate: RetrievedChunk, rerank_score: float) -> RankedSearchResult:
+def _ranked_result(
+    candidate: RetrievedChunk, rerank_score: float | None = None
+) -> RankedSearchResult:
     return RankedSearchResult(
         file=candidate.file_path,
         start_line=candidate.start_line,

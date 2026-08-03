@@ -47,7 +47,7 @@ class SearchResult(BaseModel):
     end_line: int
     snippet: str
     embedding_score: float
-    rerank_score: float
+    rerank_score: float | None
     language: str
 
 
@@ -57,6 +57,7 @@ class SearchResponse(BaseModel):
     pinecone_latency_ms: int
     rerank_latency_ms: int
     results: list[SearchResult]
+    vector_results: list[SearchResult]
 
 
 class HealthResponse(BaseModel):

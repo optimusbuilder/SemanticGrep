@@ -65,6 +65,10 @@ def test_search_reranks_pinecone_candidates_and_preserves_both_scores() -> None:
         ("src/screenshot.ts", 0.77, 0.98),
         ("src/browser.ts", 0.82, 0.42),
     ]
+    assert [result.file for result in summary.vector_results] == [
+        "src/browser.ts",
+        "src/screenshot.ts",
+    ]
 
 
 def test_search_skips_rerank_when_vector_search_returns_no_candidates() -> None:
@@ -86,4 +90,5 @@ def test_search_skips_rerank_when_vector_search_returns_no_candidates() -> None:
     summary = searcher.search("Where are screenshots captured?", "browserbase/stagehand")
 
     assert summary.results == []
+    assert summary.vector_results == []
     assert summary.rerank_latency_ms == 0

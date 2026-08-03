@@ -77,6 +77,7 @@ def search_repository(request: SearchRequest) -> SearchResponse:
         pinecone_latency_ms=summary.pinecone_latency_ms,
         rerank_latency_ms=summary.rerank_latency_ms,
         results=summary.results,
+        vector_results=summary.vector_results,
     )
 
 
