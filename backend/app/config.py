@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     cohere_api_key: str
     cohere_tokens_per_minute: int = 90_000
+    fast_index_max_chunks: int = 2_000
     pinecone_api_key: str
     pinecone_index_name: str
     pinecone_cloud: str = "aws"

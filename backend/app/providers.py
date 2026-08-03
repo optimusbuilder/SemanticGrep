@@ -1,6 +1,6 @@
 import time
 from collections import deque
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 
 import cohere
 from cohere.errors import TooManyRequestsError
@@ -31,10 +31,16 @@ class CohereEmbedder:
     def count_tokens(self, text: str) -> int:
         return len(self.client.tokenize(text=text, model=EMBED_MODEL, offline=True).tokens)
 
-    def embed_documents(self, chunks: Sequence[CodeChunk]) -> tuple[list[list[float]], float]:
+    def embed_documents(
+        self,
+        chunks: Sequence[CodeChunk],
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> tuple[list[list[float]], float]:
         embeddings: list[list[float]] = []
         started_at = time.perf_counter()
-        for batch, token_count in self._token_safe_batches(chunks):
+        completed = 0
+        token_safe_batches = list(self._token_safe_batches(chunks))
+        for batch, token_count in token_safe_batches:
             self._wait_for_rate_limit(token_count)
             try:
                 response = self.client.embed(
@@ -58,6 +64,9 @@ class CohereEmbedder:
             if response.embeddings.float is None:
                 raise RuntimeError("Cohere did not return float embeddings.")
             embeddings.extend(response.embeddings.float)
+            completed += len(batch)
+            if progress_callback is not None:
+                progress_callback(completed, len(chunks))
         return embeddings, time.perf_counter() - started_at
 
     def _token_safe_batches(
@@ -119,6 +128,7 @@ class PineconeStore:
         repository: str,
         chunks: Sequence[CodeChunk],
         embeddings: Sequence[list[float]],
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> None:
         if len(chunks) != len(embeddings):
             raise ValueError("Every chunk must have exactly one embedding.")
@@ -144,5 +154,9 @@ class PineconeStore:
             }
             for chunk, embedding in zip(chunks, embeddings, strict=True)
         ]
+        completed = 0
         for batch in batches(vectors, UPSERT_BATCH_SIZE):
             index.upsert(vectors=list(batch), namespace=namespace)
+            completed += len(batch)
+            if progress_callback is not None:
+                progress_callback(completed, len(vectors))

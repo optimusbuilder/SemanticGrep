@@ -7,6 +7,8 @@ class IndexRequest(BaseModel):
     github_url: AnyHttpUrl = Field(
         description="Public GitHub repository URL to clone and index."
     )
+    mode: Literal["fast", "full"] = "fast"
+    max_chunks: int | None = Field(default=None, ge=1, le=20_000)
 
     @field_validator("github_url")
     @classmethod
@@ -17,12 +19,20 @@ class IndexRequest(BaseModel):
         return value
 
 
-class IndexResponse(BaseModel):
-    status: Literal["ready"]
+class IndexJobResponse(BaseModel):
+    id: str
+    status: Literal[
+        "queued", "cloning", "filtering", "chunking", "embedding", "upserting", "ready", "failed"
+    ]
     repository: str
-    files: int
-    chunks: int
-    embedding_time_seconds: float
+    mode: Literal["fast", "full"]
+    progress: int
+    files: int | None = None
+    chunks: int | None = None
+    available_chunks: int | None = None
+    skipped_chunks: int | None = None
+    embedding_time_seconds: float | None = None
+    error: str | None = None
 
 
 class SearchRequest(BaseModel):
