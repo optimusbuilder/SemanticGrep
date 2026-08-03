@@ -12,6 +12,15 @@ const demoQueries = [
   { title: "Clipboard", query: "Where is clipboard handling implemented?", outcome: "Find the focused implementation, not generic page actions." },
 ];
 
+const pipelineSteps = [
+  ["embedding", "Embedding query"],
+  ["retrieving", "Pinecone retrieval"],
+  ["reranking", "Cohere Rerank"],
+  ["answering", "Command A"],
+] as const;
+
+type PipelineStage = "idle" | "embedding" | "retrieving" | "reranking" | "answering" | "complete";
+
 type IndexJob = {
   id: string;
   status: "queued" | "cloning" | "filtering" | "chunking" | "embedding" | "upserting" | "ready" | "failed";
@@ -88,6 +97,7 @@ export default function Home() {
   const [isSearching, setIsSearching] = useState(false);
   const [view, setView] = useState<"reranked" | "vector">("reranked");
   const [copied, setCopied] = useState<string | null>(null);
+  const [pipelineStage, setPipelineStage] = useState<PipelineStage>("idle");
 
   const isIndexing = indexJob !== null && !["ready", "failed"].includes(indexJob.status);
   const isIndexed = indexJob?.status === "ready";
@@ -130,6 +140,11 @@ export default function Home() {
       <div className="mx-auto max-w-[1440px] border border-[#c7c8be] bg-[#f5f4ed] p-5 sm:p-7"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[#66730d]">Retrieval lab</p><h2 className="mt-2 text-2xl font-medium tracking-[-0.05em]">What reranking changed</h2></div><p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#6d7067]">Pinecone top 20 → Cohere top 5</p></div><div className="mt-6 grid gap-2">{searchData.results.map((result, rerankIndex) => { const vectorIndex = searchData.vector_results.findIndex((candidate) => candidate.file === result.file && candidate.start_line === result.start_line); const movement = vectorIndex - rerankIndex; return <button type="button" key={`${result.file}-${result.start_line}`} onClick={() => highlightCitation(result.file, result.start_line)} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-l-2 border-[#b5ca39] bg-[#ebede2] px-3 py-3 text-left transition hover:bg-[#e2e7cb]"><span className="font-mono text-[10px] text-[#72766b]">#{String(vectorIndex + 1).padStart(2, "0")} → #{String(rerankIndex + 1).padStart(2, "0")}</span><span className="min-w-0 truncate text-xs font-medium">{result.file}</span><span className={`font-mono text-xs ${movement > 0 ? "text-[#517307]" : "text-[#71746b]"}`}>{movement > 0 ? `↑ ${movement}` : movement < 0 ? `↓ ${Math.abs(movement)}` : "="}</span></button>})}</div></div>
     </section>
   ) : null;
+  const pipelinePanel = (
+    <section className="pipeline-panel relative bg-[#f5f4ed] px-5 pb-10 sm:px-8 lg:px-12" aria-label="Search pipeline">
+      <div className="mx-auto max-w-[1440px] border-y border-[#d5d6cc] py-4"><div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div className="flex items-center gap-3"><span className={`h-2 w-2 rounded-full ${pipelineStage === "idle" ? "bg-[#b8b9af]" : pipelineStage === "complete" ? "bg-[#7e9913]" : "animate-pulse bg-[#a5c900]"}`} /><span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#66695f]">{pipelineStage === "idle" ? "Awaiting query" : pipelineStage === "complete" ? `${searchData?.search_time_ms} ms complete` : "Retrieval in progress"}</span></div><div className="flex flex-wrap items-center gap-x-2 gap-y-2">{pipelineSteps.map(([stage, label], index) => { const activeIndex = pipelineSteps.findIndex(([step]) => step === pipelineStage); const stepIndex = pipelineSteps.findIndex(([step]) => step === stage); const isComplete = pipelineStage === "complete" || (activeIndex > stepIndex && activeIndex !== -1); const isActive = pipelineStage === stage; return <div key={stage} className="flex items-center gap-2"><span className={`border px-2 py-1 font-mono text-[10px] transition ${isActive ? "border-[#718617] bg-[#d5ff45] text-[#27310b]" : isComplete ? "border-[#b5c86a] bg-[#edf3cf] text-[#5b7110]" : "border-[#d1d2c8] text-[#85877e]"}`}>{isComplete && !isActive ? "✓ " : ""}{label}</span>{index < pipelineSteps.length - 1 && <span className="text-[#a3a59a]">→</span>}</div>})}</div></div></div>
+    </section>
+  );
 
   useEffect(() => {
     if (!indexJob || ["ready", "failed"].includes(indexJob.status)) return;
@@ -165,6 +180,12 @@ export default function Home() {
     if (!canSearch || !queryToSearch.trim()) return;
     setIsSearching(true);
     setSearchError(null);
+    setPipelineStage("embedding");
+    const pipelineTimers = [
+      window.setTimeout(() => setPipelineStage("retrieving"), 280),
+      window.setTimeout(() => setPipelineStage("reranking"), 620),
+      window.setTimeout(() => setPipelineStage("answering"), 960),
+    ];
     try {
       const payload = await apiRequest<SearchResponse>("/api/search", {
         method: "POST",
@@ -174,8 +195,11 @@ export default function Home() {
       setView("reranked");
     } catch (error) {
       setSearchError(error instanceof Error ? error.message : "Unable to search this repository.");
+      setPipelineStage("idle");
     } finally {
+      pipelineTimers.forEach((timer) => window.clearTimeout(timer));
       setIsSearching(false);
+      setPipelineStage((stage) => stage === "idle" ? stage : "complete");
     }
   }
 
@@ -223,6 +247,7 @@ export default function Home() {
       <section className="relative border-t border-[#cbccc1] bg-[#e8e9e1]" aria-label="Search results"><div className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14"><div className="mb-7 flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[#66695f]">03 / Rank</p><h2 className="mt-2 text-lg font-medium tracking-[-0.03em]">{searchData ? <>Results for <span className="text-[#718617]">“{searchData.query}”</span></> : "Results will appear here"}</h2></div>{searchData && <p className="font-mono text-[11px] text-[#676a60]">{searchData.search_time_ms} ms total query latency</p>}</div>{searchData ? <div className="grid gap-8 xl:grid-cols-[1fr_2fr]"><aside className="border border-[#c5c6bc] bg-[#f5f4ed] p-5"><div className="flex border-b border-[#d4d5cb]"><button onClick={() => setView("reranked")} className={`-mb-px border-b-2 px-0 pb-3 pr-5 text-sm font-medium ${view === "reranked" ? "border-[#1d211b] text-[#1d211b]" : "border-transparent text-[#74766d]"}`}>After Rerank</button><button onClick={() => setView("vector")} className={`-mb-px border-b-2 px-0 pb-3 pl-4 text-sm font-medium ${view === "vector" ? "border-[#1d211b] text-[#1d211b]" : "border-transparent text-[#74766d]"}`}>Raw vector</button></div><p className="mt-5 text-xs leading-5 text-[#686b61]">{view === "reranked" ? "Cohere Rerank promotes the code most likely to answer your question." : "Pinecone returns candidates by embedding similarity alone."}</p><div className="mt-5 space-y-2">{displayedResults.slice(0, 5).map((result, index) => <div key={`${result.file}-${result.start_line}`} className="flex items-center gap-3 border-l-2 border-[#b4ca35] bg-[#ebede2] px-3 py-3"><span className="font-mono text-[10px] text-[#75786e]">{String(index + 1).padStart(2, "0")}</span><span className="min-w-0 flex-1 truncate text-xs font-medium">{result.file.split("/").pop()}</span><span className="font-mono text-xs text-[#668014]">{(view === "reranked" ? result.rerank_score : result.embedding_score)?.toFixed(2)}</span></div>)}</div><div className="mt-6 border-t border-[#d4d5cb] pt-4"><div className="flex justify-between text-[11px] text-[#6e7168]"><span>Embed retrieval</span><span className="font-mono">{searchData.pinecone_latency_ms} ms</span></div><div className="mt-2 flex justify-between text-[11px] text-[#6e7168]"><span>Rerank inference</span><span className="font-mono">{searchData.rerank_latency_ms} ms</span></div></div></aside><div className="space-y-4">{displayedResults.map((result, index) => <article key={`${result.file}-${result.start_line}`} className="group border border-[#c7c8be] bg-[#f8f7f2] transition hover:border-[#99b51f] hover:shadow-[4px_4px_0_#d5ff45]"><div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[#d7d8ce] px-5 py-4"><span className="font-mono text-[10px] text-[#74776d]">{String(index + 1).padStart(2, "0")}</span><a href={`https://github.com/${repositoryScope}/blob/HEAD/${result.file}#L${result.start_line}-L${result.end_line}`} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-sm font-semibold tracking-[-0.02em] hover:text-[#718617]">{result.file}</a><span className="rounded-full border border-[#cfd0c6] px-2 py-1 font-mono text-[10px] text-[#5f6259]">{result.language}</span><button onClick={() => void copySnippet(result)} className="inline-flex items-center gap-1.5 text-xs text-[#5c6057] hover:text-[#1c211b]">{copied === result.file ? <Mark type="check" /> : <Mark type="copy" />}{copied === result.file ? "Copied" : "Copy"}</button></div><div className="grid grid-cols-[1fr_auto] gap-4 px-5 py-3 text-xs sm:grid-cols-[1fr_auto_auto_auto]"><span className="font-mono text-[#74766d]">Lines {result.start_line}-{result.end_line}</span><span className="text-[#696c62]">Embed <b className="ml-1 font-mono font-medium text-[#1d211b]">{result.embedding_score.toFixed(2)}</b></span>{result.rerank_score !== null && <span className="text-[#596b1c]">Rerank <b className="ml-1 font-mono font-medium text-[#455c08]">{result.rerank_score.toFixed(2)}</b></span>}</div><pre className="overflow-x-auto border-t border-[#e0e1d7] bg-[#20231e] px-5 py-4 font-mono text-[11px] leading-5 text-[#e3e6d8]"><code>{result.snippet}</code></pre></article>)}{displayedResults.length === 0 && <p className="border border-dashed border-[#c5c6bc] p-6 text-sm text-[#686b61]">No matching code chunks were found for this query.</p>}</div></div> : <div className="border border-dashed border-[#c5c6bc] bg-[#f0f0e9] p-8 text-sm text-[#686b61]">Search an already indexed repository or start a new fast index above.</div>}</div></section>
 
       <footer className="relative mx-auto flex max-w-[1440px] flex-col gap-3 px-5 py-8 text-xs text-[#6d7067] sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-12"><span>RepoRanker <span className="mx-2 text-[#a1a399]">/</span> A source-code retrieval system</span><span className="font-mono text-[10px] uppercase tracking-[0.12em]">Cohere Embed + Rerank</span></footer>
+      {pipelinePanel}
       {demoPanel}
       {retrievalLab}
     </main>
