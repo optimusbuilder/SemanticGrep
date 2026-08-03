@@ -40,7 +40,7 @@ class RepositoryIndexer:
     ) -> IndexingSummary:
         repository = repository_name(github_url)
         _report_progress(progress_callback, "cloning", 5)
-        with tempfile.TemporaryDirectory(prefix="reporanker-") as directory:
+        with tempfile.TemporaryDirectory(prefix="semanticgrep-") as directory:
             checkout = Path(directory) / "repository"
             Repo.clone_from(github_url, checkout, depth=1)
             source_files = collect_source_files(checkout)

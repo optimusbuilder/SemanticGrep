@@ -1,1 +1,1 @@
-"""RepoRanker API package."""
+"""SemanticGrep API package."""

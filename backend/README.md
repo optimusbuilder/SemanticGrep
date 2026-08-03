@@ -1,6 +1,6 @@
-# RepoRanker API
+# SemanticGrep API
 
-FastAPI service for RepoRanker's code retrieval pipeline. It ingests public GitHub repositories, stores embeddings in Pinecone, retrieves and reranks candidates with Cohere, and generates grounded answers with citations.
+FastAPI service for SemanticGrep's code retrieval pipeline. It ingests public GitHub repositories, stores embeddings in Pinecone, retrieves and reranks candidates with Cohere, and generates grounded answers with citations.
 
 ## Development
 

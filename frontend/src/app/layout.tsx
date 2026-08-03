@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RepoRanker | Code Retrieval Pipeline",
+  title: "SemanticGrep | Code Retrieval Pipeline",
   description: "An end-to-end retrieval pipeline for source code.",
 };
 

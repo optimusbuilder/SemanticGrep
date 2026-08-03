@@ -9,7 +9,7 @@ def test_health_returns_service_status() -> None:
     response = TestClient(app).get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "service": "reporanker-api"}
+    assert response.json() == {"status": "ok", "service": "semanticgrep-api"}
 
 
 def test_search_requires_repository_scope() -> None:

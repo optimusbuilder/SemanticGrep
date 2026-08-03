@@ -1,12 +1,12 @@
-# RepoRanker
+# SemanticGrep
 
-**RepoRanker is an end-to-end retrieval pipeline for source code.** It indexes a public GitHub repository, retrieves implementation-relevant code with semantic search, improves precision with reranking, and generates grounded explanations with source citations.
+**SemanticGrep is an end-to-end retrieval pipeline for source code.** It indexes a public GitHub repository, retrieves implementation-relevant code with semantic search, improves precision with reranking, and generates grounded explanations with source citations.
 
 Live demo: https://reporanker-ten.vercel.app
 
-## Why RepoRanker
+## Why SemanticGrep
 
-Keyword search can find a symbol, but it struggles with intent. RepoRanker is designed for questions such as:
+Keyword search can find a symbol, but it struggles with intent. SemanticGrep is designed for questions such as:
 
 - Where is clipboard handling implemented?
 - How does agent replay recording work?
@@ -68,7 +68,7 @@ Natural-language query -> Cohere Embed (search_query)
 
 ## Retrieval Design
 
-RepoRanker uses one 1,024-dimensional Pinecone index. Each repository is stored in its own namespace, derived from `owner/repository`. For example, `browserbase/stagehand` becomes `browserbase--stagehand`.
+SemanticGrep uses one 1,024-dimensional Pinecone index. Each repository is stored in its own namespace, derived from `owner/repository`. For example, `browserbase/stagehand` becomes `browserbase--stagehand`.
 
 Fast indexing prioritizes implementation source roots such as `src/`, `app/`, `lib/`, and `packages/*/src/`. It removes low-signal chunks and caps the first run at 2,000 chunks to keep trial usage and first-run latency practical.
 

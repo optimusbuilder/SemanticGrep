@@ -25,7 +25,7 @@ settings = get_settings()
 jobs = IndexJobManager(settings)
 
 app = FastAPI(
-    title="RepoRanker API",
+    title="SemanticGrep API",
     version="0.1.0",
     description="An end-to-end source-code retrieval pipeline.",
 )
@@ -41,7 +41,7 @@ app.add_middleware(
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="reporanker-api")
+    return HealthResponse(status="ok", service="semanticgrep-api")
 
 
 @app.post("/api/index", response_model=IndexJobResponse, status_code=status.HTTP_202_ACCEPTED)

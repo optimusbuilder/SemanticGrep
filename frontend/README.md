@@ -1,4 +1,4 @@
-# RepoRanker Frontend
+# SemanticGrep Frontend
 
 Next.js interface for selecting a repository, running semantic code searches, reviewing vector-versus-reranked results, and reading grounded answers.
 

@@ -1,7 +1,7 @@
 [project]
-name = "reporanker-api"
+name = "semanticgrep-api"
 version = "0.1.0"
-description = "API for RepoRanker's source-code retrieval pipeline."
+description = "API for SemanticGrep's source-code retrieval pipeline."
 requires-python = ">=3.12"
 dependencies = [
     "cohere>=5.20.0",
