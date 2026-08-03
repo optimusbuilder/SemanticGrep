@@ -79,6 +79,15 @@ type BenchmarkResponse = {
   cases: BenchmarkCase[];
 };
 
+type RepositorySummary = {
+  repository: string;
+  chunks: number;
+};
+
+type RepositoryListResponse = {
+  repositories: RepositorySummary[];
+};
+
 async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${apiUrl}${path}`, {
     ...options,
@@ -117,6 +126,8 @@ export default function Home() {
   const [benchmark, setBenchmark] = useState<BenchmarkResponse | null>(null);
   const [isBenchmarking, setIsBenchmarking] = useState(false);
   const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
+  const [indexedRepositories, setIndexedRepositories] = useState<RepositorySummary[]>([]);
+  const [repositoryError, setRepositoryError] = useState<string | null>(null);
 
   const isIndexing = indexJob !== null && !["ready", "failed"].includes(indexJob.status);
   const isIndexed = indexJob?.status === "ready";
@@ -126,6 +137,12 @@ export default function Home() {
     .replace(/\/$/, "");
   const canSearch = !isIndexing && /^[\w.-]+\/[\w.-]+$/.test(repositoryScope);
   const displayedResults = view === "reranked" ? searchData?.results ?? [] : searchData?.vector_results ?? [];
+  const selectRepository = (selectedRepository: string) => {
+    setRepository(`https://github.com/${selectedRepository}`);
+    setIndexJob(null);
+    setSearchData(null);
+    setSearchError(null);
+  };
   const runBenchmark = async () => {
     if (repositoryScope !== "browserbase/stagehand" || !canSearch) return;
     setIsBenchmarking(true);
@@ -169,6 +186,11 @@ export default function Home() {
       </div>
     </section>
   );
+  const repositoryPanel = (
+    <section className="repository-workspace relative bg-[#f5f4ed] px-5 py-10 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-[1440px]"><div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[#66695f]">Repository workspace</p><h2 className="mt-2 text-2xl font-medium tracking-[-0.05em]">Choose a codebase</h2></div><p className="max-w-sm text-xs leading-5 text-[#66695f]">Start with the Stagehand showcase, reopen an indexed namespace, or index any public GitHub repository.</p></div><div className="grid gap-3 lg:grid-cols-[1.2fr_1fr_1fr]"><button type="button" onClick={() => selectRepository("browserbase/stagehand")} className={`border p-5 text-left transition ${repositoryScope === "browserbase/stagehand" ? "border-[#718617] bg-[#edf3cf] shadow-[3px_3px_0_#d5ff45]" : "border-[#c8c9bf] bg-[#f9f8f3] hover:border-[#91a91d]"}`}><span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#647b11]">Cohere showcase</span><span className="mt-2 block text-lg font-semibold tracking-[-0.03em]">Browserbase / Stagehand</span><span className="mt-2 block text-xs leading-5 text-[#66695f]">Curated queries, Retrieval Lab, and the rerank evaluation set.</span></button><div className="border border-[#c8c9bf] bg-[#f9f8f3] p-5"><span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#66695f]">Indexed repositories</span><div className="mt-3 max-h-32 space-y-1 overflow-y-auto">{indexedRepositories.filter((item) => item.repository !== "browserbase/stagehand").map((item) => <button type="button" key={item.repository} onClick={() => selectRepository(item.repository)} className={`flex w-full items-center justify-between gap-3 px-2 py-2 text-left text-xs transition hover:bg-[#edf3cf] ${repositoryScope === item.repository ? "bg-[#edf3cf]" : ""}`}><span className="truncate font-medium">{item.repository}</span><span className="font-mono text-[10px] text-[#6d7067]">{item.chunks}</span></button>)}{indexedRepositories.length <= 1 && <p className="px-2 py-2 text-xs text-[#74766d]">Your indexed repositories will appear here.</p>}</div>{repositoryError && <p className="mt-3 text-xs text-[#9d3628]">{repositoryError}</p>}</div><button type="button" onClick={() => { setRepository(""); setIndexJob(null); setSearchData(null); window.setTimeout(() => document.getElementById("repository")?.focus(), 0); }} className="border border-dashed border-[#aeb0a5] bg-[#f9f8f3] p-5 text-left transition hover:border-[#718617] hover:bg-[#edf3cf]"><span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#66695f]">New repository</span><span className="mt-2 block text-lg font-semibold tracking-[-0.03em]">Index from GitHub</span><span className="mt-2 block text-xs leading-5 text-[#66695f]">Paste a public `owner/repository` URL below and create a fresh retrieval namespace.</span></button></div></div>
+    </section>
+  );
   const benchmarkPanel = repositoryScope === "browserbase/stagehand" ? (
     <section className="benchmark-panel relative bg-[#f5f4ed] px-5 py-10 sm:px-8 lg:px-12">
       <div className="mx-auto max-w-[1440px] border border-[#c8c9bf] bg-[#f9f8f3] p-5 sm:p-7"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[#66730d]">Evaluation set</p><h2 className="mt-2 text-2xl font-medium tracking-[-0.05em]">Measure the rerank lift</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#66695f]">Five curated Stagehand implementation queries. Vector-only and Rerank both begin with the same Pinecone top-20 candidates.</p></div><button type="button" onClick={() => void runBenchmark()} disabled={!canSearch || isBenchmarking} className="inline-flex items-center justify-center gap-2 bg-[#1d211b] px-4 py-3 text-sm font-medium text-[#f5f4ed] transition hover:bg-[#718617] disabled:cursor-not-allowed">{isBenchmarking ? "Running benchmark..." : "Run benchmark"}<Mark type="arrow" /></button></div>{benchmarkError && <p className="mt-4 text-xs text-[#9d3628]">{benchmarkError}</p>}{benchmark && <><div className="mt-7 grid gap-3 sm:grid-cols-2"><div className="border-l-2 border-[#b9bbb0] bg-[#eeeeE7] p-4"><p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#6d7067]">Vector-only</p><p className="mt-2 text-2xl font-medium tracking-[-0.05em]">{benchmark.vector_recall_at_5}% <span className="text-sm text-[#6d7067]">Recall@5</span></p><p className="mt-1 font-mono text-xs text-[#676a60]">MRR {benchmark.vector_mrr.toFixed(3)}</p></div><div className="border-l-2 border-[#8eaa1c] bg-[#edf3cf] p-4"><p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#647b11]">After Cohere Rerank</p><p className="mt-2 text-2xl font-medium tracking-[-0.05em]">{benchmark.rerank_recall_at_5}% <span className="text-sm text-[#647b11]">Recall@5</span></p><p className="mt-1 font-mono text-xs text-[#647b11]">MRR {benchmark.rerank_mrr.toFixed(3)}</p></div></div><div className="mt-5 divide-y divide-[#dedfd5] border-y border-[#dedfd5]">{benchmark.cases.map((item) => <div key={item.query} className="grid gap-2 py-3 text-xs sm:grid-cols-[1fr_auto_auto]"><span className="font-medium">{item.query}</span><span className="font-mono text-[#6c6f65]">Vector #{item.vector_rank ?? "-"}</span><span className="font-mono text-[#647b11]">Rerank #{item.rerank_rank ?? "-"}</span></div>)}</div></>}</div>
@@ -191,7 +213,16 @@ export default function Home() {
     const poll = async () => {
       try {
         const nextJob = await apiRequest<IndexJob>(`/api/index/${indexJob.id}`);
-        if (!cancelled) setIndexJob(nextJob);
+        if (!cancelled) {
+          setIndexJob(nextJob);
+          if (nextJob.status === "ready" && nextJob.chunks !== null) {
+            const completedChunks = nextJob.chunks;
+            setIndexedRepositories((repositories) => [
+              { repository: nextJob.repository, chunks: completedChunks },
+              ...repositories.filter((item) => item.repository !== nextJob.repository),
+            ]);
+          }
+        }
       } catch (error) {
         if (!cancelled) setIndexError(error instanceof Error ? error.message : "Unable to read indexing progress.");
       }
@@ -200,6 +231,14 @@ export default function Home() {
     const interval = window.setInterval(() => void poll(), 2_000);
     return () => { cancelled = true; window.clearInterval(interval); };
   }, [indexJob]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void apiRequest<RepositoryListResponse>("/api/repositories")
+      .then((payload) => { if (!cancelled) setIndexedRepositories(payload.repositories); })
+      .catch((error) => { if (!cancelled) setRepositoryError(error instanceof Error ? error.message : "Unable to load indexed repositories."); });
+    return () => { cancelled = true; };
+  }, []);
 
   async function indexRepository() {
     setIndexError(null);
@@ -290,6 +329,7 @@ export default function Home() {
       {demoPanel}
       {benchmarkPanel}
       {retrievalLab}
+      {repositoryPanel}
     </main>
   );
 }

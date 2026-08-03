@@ -78,3 +78,22 @@ def test_index_job_can_be_created_and_polled(monkeypatch) -> None:
 
     assert status.status_code == 200
     assert status.json()["status"] == "queued"
+
+
+def test_repository_catalog_lists_indexed_namespaces(monkeypatch) -> None:
+    class FakeStore:
+        def __init__(self, *_: object) -> None:
+            pass
+
+        def list_repositories(self) -> list[tuple[str, int]]:
+            return [("browserbase/stagehand", 2_000), ("optimusbuilder/contractbot", 381)]
+
+    monkeypatch.setattr(main, "PineconeStore", FakeStore)
+
+    response = TestClient(app).get("/api/repositories")
+
+    assert response.status_code == 200
+    assert response.json()["repositories"][0] == {
+        "repository": "browserbase/stagehand",
+        "chunks": 2000,
+    }

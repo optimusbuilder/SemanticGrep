@@ -89,6 +89,15 @@ class BenchmarkResponse(BaseModel):
     cases: list[BenchmarkCaseResponse]
 
 
+class RepositorySummary(BaseModel):
+    repository: str
+    chunks: int
+
+
+class RepositoryListResponse(BaseModel):
+    repositories: list[RepositorySummary]
+
+
 class HealthResponse(BaseModel):
     status: Literal["ok"]
     service: str

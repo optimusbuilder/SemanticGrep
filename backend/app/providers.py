@@ -202,6 +202,16 @@ class PineconeStore:
             for match in response.matches
         ]
 
+    def list_repositories(self) -> list[tuple[str, int]]:
+        if self.index_name not in self.client.list_indexes().names():
+            return []
+        namespaces = self._index().describe_index_stats().namespaces or {}
+        repositories = []
+        for namespace, stats in namespaces.items():
+            vector_count = getattr(stats, "vector_count", 0)
+            repositories.append((namespace.replace("--", "/", 1), int(vector_count)))
+        return sorted(repositories)
+
 
 class CohereReranker:
     def __init__(self, api_key: str) -> None:

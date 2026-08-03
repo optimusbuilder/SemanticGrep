@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.benchmark import run_stagehand_benchmark
 from app.config import get_settings
 from app.jobs import IndexJob, IndexJobManager
+from app.providers import PineconeStore
 from app.schemas import (
     AnswerCitation,
     BenchmarkCaseResponse,
@@ -12,6 +13,8 @@ from app.schemas import (
     HealthResponse,
     IndexJobResponse,
     IndexRequest,
+    RepositoryListResponse,
+    RepositorySummary,
     SearchRequest,
     SearchResponse,
     SearchResult,
@@ -57,6 +60,16 @@ def index_status(job_id: str) -> IndexJobResponse:
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Index job not found.")
     return _job_response(job)
+
+
+@app.get("/api/repositories", response_model=RepositoryListResponse)
+def list_repositories() -> RepositoryListResponse:
+    repositories = PineconeStore(settings).list_repositories()
+    return RepositoryListResponse(
+        repositories=[
+            RepositorySummary(repository=name, chunks=chunks) for name, chunks in repositories
+        ]
+    )
 
 
 @app.post("/api/search", response_model=SearchResponse)
