@@ -44,6 +44,13 @@ class FakeReranker:
         return [(1, 0.98), (0, 0.42)]
 
 
+class FakeAnswerer:
+    def answer(self, query: str, documents: list[str]) -> str:
+        assert query == "Where are screenshots captured?"
+        assert "src/screenshot.ts" in documents[0]
+        return "Screenshots are captured by `page.screenshot()` in the screenshot handler."
+
+
 def test_search_reranks_pinecone_candidates_and_preserves_both_scores() -> None:
     store = FakeStore()
     searcher = RepositorySearcher(
@@ -51,6 +58,7 @@ def test_search_reranks_pinecone_candidates_and_preserves_both_scores() -> None:
         embedder=FakeEmbedder(),  # type: ignore[arg-type]
         store=store,  # type: ignore[arg-type]
         reranker=FakeReranker(),  # type: ignore[arg-type]
+        answerer=FakeAnswerer(),  # type: ignore[arg-type]
     )
 
     summary = searcher.search(
@@ -69,6 +77,13 @@ def test_search_reranks_pinecone_candidates_and_preserves_both_scores() -> None:
         "src/browser.ts",
         "src/screenshot.ts",
     ]
+    assert summary.answer == (
+        "Screenshots are captured by `page.screenshot()` in the screenshot handler."
+    )
+    assert [(citation.file, citation.start_line) for citation in summary.citations] == [
+        ("src/screenshot.ts", 40),
+        ("src/browser.ts", 10),
+    ]
 
 
 def test_search_skips_rerank_when_vector_search_returns_no_candidates() -> None:
@@ -85,6 +100,7 @@ def test_search_skips_rerank_when_vector_search_returns_no_candidates() -> None:
         embedder=FakeEmbedder(),  # type: ignore[arg-type]
         store=EmptyStore(),  # type: ignore[arg-type]
         reranker=FailingReranker(),  # type: ignore[arg-type]
+        answerer=FakeAnswerer(),  # type: ignore[arg-type]
     )
 
     summary = searcher.search("Where are screenshots captured?", "browserbase/stagehand")

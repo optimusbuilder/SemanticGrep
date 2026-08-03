@@ -215,3 +215,34 @@ class CohereReranker:
             top_n=min(5, len(documents)),
         )
         return [(result.index, float(result.relevance_score)) for result in response.results]
+
+
+class CohereAnswerer:
+    def __init__(self, api_key: str, model: str) -> None:
+        self.client = cohere.ClientV2(api_key=api_key)
+        self.model = model
+
+    def answer(self, query: str, documents: Sequence[str]) -> str:
+        response = self.client.chat(
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Answer the developer's question using only the supplied source-code "
+                        "context. Be concise and explain the execution flow. If the context is "
+                        "insufficient, say so. "
+                        "Do not invent files, functions, or behavior."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Question: {query}\n\nSource-code context:\n\n" + "\n\n".join(documents)
+                    ),
+                },
+            ],
+            max_tokens=500,
+            temperature=0.1,
+        )
+        return "".join(part.text for part in response.message.content if hasattr(part, "text"))

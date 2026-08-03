@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 
 import app.main as main
 from app.main import app, jobs
-from app.search import RankedSearchResult, SearchSummary
+from app.search import AnswerCitation, RankedSearchResult, SearchSummary
 
 
 def test_health_returns_service_status() -> None:
@@ -39,6 +39,9 @@ def test_search_response_serializes_ranked_results(monkeypatch) -> None:
                 search_time_ms=100,
                 pinecone_latency_ms=30,
                 rerank_latency_ms=50,
+                answer_latency_ms=70,
+                answer="Screenshots are captured in screenshot.ts.",
+                citations=[AnswerCitation("src/screenshot.ts", 40, 62)],
                 results=[result],
                 vector_results=[result],
             )
@@ -55,6 +58,7 @@ def test_search_response_serializes_ranked_results(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["results"][0]["rerank_score"] == 0.98
+    assert response.json()["citations"][0]["file"] == "src/screenshot.ts"
 
 
 def test_index_job_can_be_created_and_polled(monkeypatch) -> None:

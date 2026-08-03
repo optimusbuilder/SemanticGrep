@@ -51,11 +51,20 @@ class SearchResult(BaseModel):
     language: str
 
 
+class AnswerCitation(BaseModel):
+    file: str
+    start_line: int
+    end_line: int
+
+
 class SearchResponse(BaseModel):
     query: str
     search_time_ms: int
     pinecone_latency_ms: int
     rerank_latency_ms: int
+    answer_latency_ms: int
+    answer: str | None
+    citations: list[AnswerCitation]
     results: list[SearchResult]
     vector_results: list[SearchResult]
 

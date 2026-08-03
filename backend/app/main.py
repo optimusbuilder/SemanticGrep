@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.jobs import IndexJob, IndexJobManager
 from app.schemas import (
+    AnswerCitation,
     HealthResponse,
     IndexJobResponse,
     IndexRequest,
@@ -77,6 +78,9 @@ def search_repository(request: SearchRequest) -> SearchResponse:
         search_time_ms=summary.search_time_ms,
         pinecone_latency_ms=summary.pinecone_latency_ms,
         rerank_latency_ms=summary.rerank_latency_ms,
+        answer_latency_ms=summary.answer_latency_ms,
+        answer=summary.answer,
+        citations=[AnswerCitation(**citation.__dict__) for citation in summary.citations],
         results=[SearchResult(**result.__dict__) for result in summary.results],
         vector_results=[SearchResult(**result.__dict__) for result in summary.vector_results],
     )
