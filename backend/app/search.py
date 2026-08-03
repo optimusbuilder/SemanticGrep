@@ -191,6 +191,6 @@ def _parse_generated_answer(response: str, result_count: int) -> tuple[str, list
         if source_id not in selected:
             selected.append(source_id)
 
-    if not selected or len(selected) > 3:
-        raise ValueError("Generated answer must select between one and three sources.")
-    return answer.strip(), selected
+    if not selected:
+        raise ValueError("Generated answer must select at least one source.")
+    return answer.strip(), selected[:3]
